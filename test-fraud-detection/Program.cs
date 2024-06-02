@@ -1,13 +1,53 @@
-﻿namespace FraudDetection
+﻿using System;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace FraudDetection
 {
   public class Order
   {
     public required int OrderId { get; set; }
     public required int DealId { get; set; }
-    public required string Email { get; set; }
-    public required string Address { get; set; }
+
+    private string email;
+    public string Email
+    {
+      get => email;
+      set
+      {
+        email = email.ToLower().Split('@')[0].Split('+')[0].Replace(".", "") + "@" + email.Split('@')[1];
+      }
+    }
+    private string address;
+    public string Address
+    {
+      get => address;
+      set
+      {
+        // normalize the address by replacing common abbreviations
+        value = Regex.Replace(value, @"\bst\b|\bst.\b", "street", RegexOptions.IgnoreCase);
+        value = Regex.Replace(value, @"\brd\b|\brd.\b", "road", RegexOptions.IgnoreCase);
+        address = value;
+      }
+    }
+
     public required string City { get; set; }
-    public required string State { get; set; }
+
+    private string state;
+    public string State
+    {
+      get => state;
+      set
+      {
+        // normalize the lowercased value to a two-letter uppercase code for states IL,CA,NY
+        if (value.ToLower() == "illinois") state = "IL";
+        else if (value.ToLower() == "california") state = "CA";
+        else if (value.ToLower() == "new york") state = "NY";
+        else
+          state = value;
+      }
+    }
+
     public required string ZipCode { get; set; }
     public required string CreditCard { get; set; }
     public string FullAddress { get; private set; }
@@ -17,7 +57,7 @@
       var parts = line.Split(',');
       if (parts.Length != 8) throw new Exception("Invalid order line: " + line);
 
-      return new Order
+      var order = new Order
       {
         OrderId = int.Parse(parts[0]),
         DealId = int.Parse(parts[1]),
@@ -26,9 +66,17 @@
         City = parts[4],
         State = parts[5],
         ZipCode = parts[6],
-        CreditCard = parts[7],
-        FullAddress = $"{parts[3]}, {parts[4]}, {parts[5]}, {parts[6]}"
+        CreditCard = parts[7]
       };
+
+      order.buildFullAddress();
+
+      return order;
+    }
+
+    private void buildFullAddress()
+    {
+      FullAddress = $"{Address}, {City}, {State}, {ZipCode}";
     }
   }
 
